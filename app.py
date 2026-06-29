@@ -10,7 +10,6 @@ CHAT_ID = "-5478779473"
 
 @app.route('/webhook', methods=['POST'])
 def tally_webhook():
-    # 1. Grab the JSON payload sent by Tally
     payload = request.json
     if not payload:
         return jsonify({"error": "No payload received"}), 400
@@ -19,37 +18,67 @@ def tally_webhook():
     guest_name = "Not Specified"
     order_items = ""
 
-    # 2. Extract fields list safely from Tally payload
+    # Grab the fields array
     fields = payload.get('data', {}).get('fields', [])
 
     for field in fields:
         label = field.get('label', '')
         value = field.get('value')
+        options = field.get('options', []) # This holds the text for dropdowns
 
-        # Capture Room Number Dropdown
-        if label == "Room Number":
-            if value:
-                room_number = str(value)
+        # 1. TRANSLATE DROPDOWNS: Convert ugly UUIDs back to text
+        if isinstance(value, list) and len(value) > 0:
+            selected_id = value[0]
+            selected_text = ""
+            
+            # Find the matching ID in the options list
+            for opt in options:
+                if opt.get('id') == selected_id:
+                    selected_text = opt.get('text', '')
+                    break
+                    
+            # Fallback just in case
+            if not selected_text:
+                 selected_text = str(selected_id)
+        else:
+            # For standard text inputs
+            selected_text = str(value) if value is not None else ""
+            
+        selected_text = selected_text.strip()
+
+        # 2. FILTER: Skip completely empty answers or "0" selections
+        if not selected_text or selected_text == "0":
             continue
 
-        # Capture Guest Name Input
-        if label == "Name":
-            if value:
-                guest_name = str(value)
+        label_lower = label.lower()
+
+        # 3. ROUTE METADATA: Catch Room and Name regardless of exact spelling
+        if "room" in label_lower:
+            room_number = selected_text
+            continue
+            
+        if "name" in label_lower:
+            guest_name = selected_text
             continue
 
-        # DROPDOWN FILTER: Process items where an actual quantity was selected
-        if value:
-            val_str = str(value).strip().lower()
-            # Ignore selections that mean zero or empty
-            if val_str not in ["0", "none", "", "false"]:
-                order_items += f"• <b>{value}x</b> {label}\n"
+        # 4. FILTER: Ignore structural form fields that shouldn't be on the receipt
+        ignore_keywords = ["total", "category", "done ordering"]
+        if any(keyword in label_lower for keyword in ignore_keywords):
+            continue
 
-    # 3. Edge Case: Blank order (if they somehow submitted without picking food)
+        # 5. FORMAT FOOD ITEMS: 
+        if selected_text.isdigit():
+            # If the answer is a quantity number, print: • 2x Sandwich
+            order_items += f"• <b>{selected_text}x</b> {label}\n"
+        else:
+            # If it's a text answer (like a special request), print normally
+            order_items += f"• <i>{label}:</i> {selected_text}\n"
+
+    # Edge Case: Blank order
     if not order_items:
         return jsonify({"status": "ignored", "message": "Empty order"}), 200
 
-    # 4. Construct your custom structured layout
+    # 6. Construct the Layout
     tg_message = "🛎 <b>NEW ORDER</b>\n"
     tg_message += f"🏢 <b>Room:</b> {room_number}\n"
     tg_message += f"👤 <b>Name:</b> {guest_name}\n\n"
@@ -57,7 +86,7 @@ def tally_webhook():
     tg_message += f"{order_items}"
     tg_message += "━━━━━━━━━━━━━━━━━━━━━━━━"
 
-    # 5. POST data directly to Telegram Bot API endpoint
+    # 7. POST to Telegram
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     payload_tg = {
         "chat_id": CHAT_ID,
@@ -75,6 +104,5 @@ def tally_webhook():
     return jsonify({"status": "success", "message": "Order routed to kitchen"}), 200
 
 if __name__ == '__main__':
-    # Fallback to port 5000 for local execution if running natively
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
