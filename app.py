@@ -15,7 +15,8 @@ def tally_webhook():
     if not payload:
         return jsonify({"error": "No payload received"}), 400
 
-    room_number = "Unknown Room"
+    room_number = "Not Specified"
+    guest_name = "Not Specified"
     order_items = ""
 
     # 2. Extract fields list safely from Tally payload
@@ -25,25 +26,36 @@ def tally_webhook():
         label = field.get('label', '')
         value = field.get('value')
 
-        # Extract Room Number Dropdown value
+        # Capture Room Number Dropdown
         if label == "Room Number":
             if value:
                 room_number = str(value)
             continue
 
-        # FILTER: If it's a number field and quantity is greater than 0, build the line item
-        if isinstance(value, (int, float)) and value > 0:
-            order_items += f"• <b>{int(value)}x</b> {label}\n"
+        # Capture Guest Name Input
+        if label == "Name":
+            if value:
+                guest_name = str(value)
+            continue
 
-    # 3. Edge Case: If the ticket is entirely blank
+        # DROPDOWN FILTER: Process items where an actual quantity was selected
+        if value:
+            val_str = str(value).strip().lower()
+            # Ignore selections that mean zero or empty
+            if val_str not in ["0", "none", "", "false"]:
+                order_items += f"• <b>{value}x</b> {label}\n"
+
+    # 3. Edge Case: Blank order (if they somehow submitted without picking food)
     if not order_items:
         return jsonify({"status": "ignored", "message": "Empty order"}), 200
 
-    # 4. Construct the kitchen-friendly message layout
-    tg_message = f"🛎 <b>NEW ORDER — {room_number.upper()}</b>\n"
-    tg_message += f"━━━━━━━━━━━━━━━━━━━━━\n\n"
-    tg_message += f"{order_items}\n"
-    tg_message += f"━━━━━━━━━━━━━━━━━━━━━"
+    # 4. Construct your custom structured layout
+    tg_message = "🛎 <b>NEW ORDER</b>\n"
+    tg_message += f"🏢 <b>Room:</b> {room_number}\n"
+    tg_message += f"👤 <b>Name:</b> {guest_name}\n\n"
+    tg_message += "<b>---------------- ITEMS -------------------</b>\n"
+    tg_message += f"{order_items}"
+    tg_message += "━━━━━━━━━━━━━━━━━━━━━━━━"
 
     # 5. POST data directly to Telegram Bot API endpoint
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
