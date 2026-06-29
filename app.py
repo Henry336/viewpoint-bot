@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 # CONFIGURATION: Insert your live BotFather token and Group Chat ID here
 TELEGRAM_TOKEN = "8656163968:AAGecUFQj9Evd_T8fcReWEy_8BhVQJdgBC4"
-CHAT_ID = "-5478779473"
+CHAT_ID = "-5475737451"
 CURRENCY = "MMK" # Change this to USD or whatever the hotel uses
 
 # THE MENU BRAIN: Add your exact Tally item names and their single-item prices here
