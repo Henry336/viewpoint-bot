@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 # CONFIGURATION: Insert your live BotFather token and Group Chat ID here
 TELEGRAM_TOKEN = "8656163968:AAGecUFQj9Evd_T8fcReWEy_8BhVQJdgBC4"
-CHAT_ID = "-5475737451"
+CHAT_ID = "-5475737451" # change this based on which group chat you're using to test the bot
 CURRENCY = "MMK" # Change this to USD or whatever the hotel uses
 
 # THE MENU BRAIN: Add your exact Tally item names and their single-item prices here
@@ -105,10 +105,10 @@ def tally_webhook():
 
     # 4. Construct the Final Layout exactly as requested
     tg_message = "🛎 <b>NEW ORDER</b>\n"
-    tg_message += f"Room: {room_number}\n"
-    tg_message += f"Name: {guest_name}\n"
-    tg_message += f"Date: {order_date}\n"
-    tg_message += f"Time: {order_time}\n\n"
+    tg_message += f"<b>Room<b>: {room_number}\n"
+    tg_message += f"<b>Name<b>: {guest_name}\n"
+    tg_message += f"<b>Date<b>: {order_date}\n"
+    tg_message += f"<b>Time<b>: {order_time}\n\n"
     
     tg_message += "<b>-- ITEMS --</b>\n"
     tg_message += f"{order_items}\n"
