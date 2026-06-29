@@ -105,10 +105,10 @@ def tally_webhook():
 
     # 4. Construct the Final Layout exactly as requested
     tg_message = "🛎 <b>NEW ORDER</b>\n"
-    tg_message += f"<b>Room<b>: {room_number}\n"
-    tg_message += f"<b>Name<b>: {guest_name}\n"
-    tg_message += f"<b>Date<b>: {order_date}\n"
-    tg_message += f"<b>Time<b>: {order_time}\n\n"
+    tg_message += f"<b>Room</b>: {room_number}\n"
+    tg_message += f"<b>Name</b>: {guest_name}\n"
+    tg_message += f"<b>Date</b>: {order_date}\n"
+    tg_message += f"<b>Time</b>: {order_time}\n\n"
     
     tg_message += "<b>-- ITEMS --</b>\n"
     tg_message += f"{order_items}\n"
