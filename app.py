@@ -7,7 +7,8 @@ app = Flask(__name__)
 
 # CONFIGURATION
 TELEGRAM_TOKEN = "8656163968:AAGecUFQj9Evd_T8fcReWEy_8BhVQJdgBC4"
-CHAT_ID = "-5475737451" 
+# CHAT_ID = "-5475737451" # Private testing chat
+CHAT_ID = "-5478779473" # Testing chat with parents
 CURRENCY = "MMK"
 
 # THE MENU BRAIN (Strict Whitelist)
