@@ -107,7 +107,7 @@ def tally_webhook():
             if text.isdigit():
                 qty = int(text)
                 price = MENU_PRICES[label]
-                line_total = qty * price
+                line_total = price
                 total_sum += line_total
                 order_items += f"- <b>{qty}x</b> {label} ({line_total:,} {CURRENCY})\n"
 
