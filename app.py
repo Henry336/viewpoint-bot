@@ -7,11 +7,10 @@ app = Flask(__name__)
 
 # CONFIGURATION
 TELEGRAM_TOKEN = "8656163968:AAGecUFQj9Evd_T8fcReWEy_8BhVQJdgBC4"
-# CHAT_ID = "-5475737451" # Private testing chat
-CHAT_ID = "-5478779473" # Testing chat with parents
+CHAT_ID = "-5475737451" 
 CURRENCY = "MMK"
 
-# THE MENU BRAIN (Strict Whitelist)
+# THE MENU BRAIN (Strict Whitelist - Clean Names Only)
 MENU_PRICES = {
     "Nan Gyi Salad": 5000,
     "Tofu Noodles": 4500,
@@ -38,15 +37,18 @@ def tally_webhook():
 
     # =========================================================================
     # STEP 1: CLEANLY PARSE ALL DATA
-    # Convert Tally's complex JSON into a simple, readable list of dictionaries
     # =========================================================================
     parsed_fields = []
     for field in fields:
-        label = field.get('label', '').strip()
+        raw_label = field.get('label', '').strip()
+        
+        # STRIP THE PRICE FROM THE TALLY LABEL
+        # Converts "Nan Gyi Salad - 5,000 MMK" -> "Nan Gyi Salad"
+        clean_label = raw_label.split(' - ')[0].strip() if ' - ' in raw_label else raw_label
+        
         val = field.get('value')
         options = field.get('options', [])
         
-        # Extract text safely from dropdown UUIDs or raw text
         if isinstance(val, list) and len(val) > 0:
             selected_id = val[0]
             text = next((opt.get('text', '') for opt in options if opt.get('id') == selected_id), str(selected_id))
@@ -54,9 +56,9 @@ def tally_webhook():
             text = str(val) if val is not None else ""
             
         text = text.strip()
-        # Only keep fields that actually have a user-entered value (> 0)
         if text and text != "0": 
-            parsed_fields.append({"label": label, "text": text})
+            # Save the CLEAN label, discarding the Tally UI version
+            parsed_fields.append({"label": clean_label, "text": text})
 
     # =========================================================================
     # STEP 2: EXTRACT METADATA & CATEGORY
@@ -65,6 +67,7 @@ def tally_webhook():
     room_number = "Not Specified"
     guest_name = "Not Specified"
     special_requests = "None"
+    payment_method = "Not Specified"
     
     for item in parsed_fields:
         lbl_lower = item['label'].lower()
@@ -74,6 +77,8 @@ def tally_webhook():
             room_number = item['text']
         elif "name" in lbl_lower:
             guest_name = item['text']
+        elif "payment" in lbl_lower: 
+            payment_method = item['text']
         elif "special request" in lbl_lower or "notes" in lbl_lower:
             special_requests = item['text']
 
@@ -83,7 +88,7 @@ def tally_webhook():
     mm_tz = timezone(timedelta(hours=6, minutes=30))
     now = datetime.now(mm_tz)
     order_date = now.strftime("%Y-%m-%d")
-    order_time = now.strftime("%I:%M:%S %p") # 12-hour format with AM/PM
+    order_time = now.strftime("%I:%M:%S %p") 
 
     # =========================================================================
     # STEP 4: STRICT WHITELIST ITEM PROCESSING
@@ -96,22 +101,17 @@ def tally_webhook():
         label = item['label']
         text = item['text']
         
-        # STRICT RULE 1: Is this explicitly a food item in our price list?
         if label in MENU_PRICES:
-            
-            # STRICT RULE 2: Does it belong to the category the user submitted under?
             if label not in allowed_items:
-                continue # If no, discard it silently.
+                continue 
                 
-            # If it passes both rules, calculate it!
             if text.isdigit():
                 qty = int(text)
                 price = MENU_PRICES[label]
-                line_total = price
+                line_total = qty * price
                 total_sum += line_total
                 order_items += f"- <b>{qty}x</b> {label} ({line_total:,} {CURRENCY})\n"
 
-    # Stop execution if order is empty after all filtering
     if not order_items:
         return jsonify({"status": "ignored", "message": "Empty order after strict filtering"}), 200
 
@@ -121,6 +121,7 @@ def tally_webhook():
     tg_message = f"🛎 <b>NEW ORDER ({user_final_category.upper()})</b>\n"
     tg_message += f"<b>Room</b>: {room_number}\n"
     tg_message += f"<b>Name</b>: {guest_name}\n"
+    tg_message += f"<b>Payment</b>: {payment_method}\n" 
     tg_message += f"<b>Date</b>: {order_date}\n"
     tg_message += f"<b>Time</b>: {order_time}\n\n"
     
